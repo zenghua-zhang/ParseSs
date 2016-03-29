@@ -1,0 +1,99 @@
+
+<html>
+<head>
+	<style type="text/css">
+<!--
+.NewsContent li {
+    height:90px;
+    width: 149px;
+    width: 144px !important;
+    float: left;
+    list-style-type: none;
+    border: 1px solid #CCCCCC;
+    margin-left: 3px;
+    text-align: center;
+    margin-top: 3px;
+    padding-top: 5px;
+    padding-right: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+-->
+</style>
+ <meta charset="utf-8" />
+ <script src='jquery-2.2.0.min.js'></script>
+ <script src='jquery.base64.js'></script>
+ <script type="text/javascript" src="qrcode.min.js"></script>
+</head>
+<body>
+		<input id="password" type="text" value="" style="width:80%" placeholder="密码" /><br />
+		<input id="encrypt" type="text" value="rc4-md5" style="margin-top:8px;width:80%" placeholder="加密方式" /><br />
+		<input id="port" type="text" value="" style="margin-top:8px;width:80%" placeholder="端口" /><br />
+        <textarea id="source" placeholder="节点列表,一行为一个节点，说明放在（）中，如hostname （XX节点）" style="margin-top:8px;width:80%;height:200px;" ></textarea><br />
+        <button id="parseButton" onclick="parseSource()">解析节点</button>
+    <div id="result" style="width:80%" class="NewsContent">
+
+    </div>
+
+<div id="qrcode" style="width:150px; height:150px; margin-top:200px;padding-left:150px;"></div>
+<div id="export" style=""></div>
+<script type="text/javascript">
+
+var qrcode = new QRCode(document.getElementById("qrcode"));
+function parseSource(){
+	var lines = $('textarea').val().split('\n');
+	$('#result').empty();
+	for(var i = 0;i < lines.length;i++){
+		var line = lines[i];
+		var node, remark;
+		if(line.indexOf('（') === -1 && line.lastIndexOf('）') === -1){
+			node = $.trim(line);
+		}else{
+			node = $.trim(line.substring(0,line.indexOf('（')  ));
+			remark = $.trim(line.substring(line.indexOf('（')+1,line.lastIndexOf('）')));
+			remark = remark.replace(/）\s*（/g, '，');
+		}
+		if(node){
+			var nodeDom = $('<li />',{id:node, class:'node'}).append(node);
+			if(remark){
+				nodeDom.data('remark',remark);
+			}
+			nodeDom.click(function(){
+				var url = $('#encrypt').val()+':'+$('#password').val()+'@'+this.innerHTML+':'+$('#port').val();
+				url = 'ss://'+$.base64.btoa(url);
+
+				qrcode.makeCode(url);
+
+			});
+			$('#result').append(nodeDom);
+		}
+
+	}
+	var allButton = $('<button />').append("全部导出");
+	allButton.click(function(){
+		var nodeList = [];
+		$('#result').children('li.node').each(function(){
+			var nodeObj =   {
+				"server" : this.innerHTML,
+				"server_port" : $('#port').val(),
+				"password" : $('#password').val(),
+				"method" : $('#encrypt').val()
+			};
+			if($(this).data('remark')){
+				nodeObj.remark = $(this).data('remark');
+			}
+
+			nodeList.push(nodeObj);
+
+		})
+		$('#export').empty();
+		$('#export').append("复制以下内容到gui-config.json的configs下：");
+		$('#export').append("<br>");
+		$('#export').append(JSON.stringify(nodeList, null, 10));
+	});
+
+	$('#result').append($("<li />").append(allButton));
+}
+</script>
+</body>
+</html>
